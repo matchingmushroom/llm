@@ -848,6 +848,25 @@
       margin-left: 8px;
       display: inline-block;
     }
+    .modal {
+      position: fixed;
+      top:0; left:0;
+      width:100%; height:100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80%;
+  overflow-y: auto;
+}
   </style>
 </head>
 <body>
@@ -881,7 +900,7 @@
             <div class="header-actions">
               <span class="action-icon" onclick="openShareModal()" title="Share Account Details">📤</span>
               <span class="action-icon" onclick="openReminderPopup()" title="Send Reminder">🔔</span>
-              <span class="action-icon" onclick="openGPS()" title="Globe View">🌐</span>
+              <span class="action-icon" onclick="openGpsPopup()" title="Globe View">🌐</span>
             </div>
           </div>
           <div class="header-sub">
@@ -997,6 +1016,19 @@
       <button onclick="sendSMS()">📱 SMS</button>
     </div>
     <button class="close-btn" onclick="closeReminder()">Close</button>
+  </div>
+</div>
+   <!-- ================= GPS POPUP ================= -->
+<div id="gpsPopup" class="modal" style="display:none;">
+  <div class="modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 id="gpsTitle">GPS Locations</h3>
+      <div>
+        <button onclick="gpsAdd()">＋</button>
+        <button onclick="closeGpsPopup()">✕</button>
+      </div>
+    </div>
+    <div id="gpsContainer"></div>
   </div>
 </div>
 
@@ -1564,6 +1596,89 @@
   // API_BASE is already defined as your Apps Script deployment URL
   window.location.href = API_BASE + '?page=gps&cifId=' + currentCIF;
 }
+// ================= GPS MODULE =================
+
+let GPS_CIF = "";
+let GPS_NAME = "";
+
+function openGpsPopup(cif, name) {
+  GPS_CIF = cif;
+  GPS_NAME = name;
+  document.getElementById("gpsTitle").innerText = name + " - GPS";
+  document.getElementById("gpsPopup").style.display = "block";
+  loadGpsData();
+}
+
+function closeGpsPopup() {
+  document.getElementById("gpsPopup").style.display = "none";
+}
+
+function loadGpsData() {
+  google.script.run.withSuccessHandler(renderGpsData)
+    .GPS_getData(GPS_CIF);
+}
+
+function renderGpsData(data) {
+  let html = "";
+  if (!data || data.length === 0) {
+    html = "<p>No GPS saved</p>";
+  } else {
+    data.forEach(d => {
+      let label = d["Location Type"];
+      if (d["Location Type"] === "Collateral") {
+        label += " - " + d["Collateral Name"];
+      }
+      html += `
+        <div style="border:1px solid #ddd; padding:10px; margin-bottom:10px; border-radius:8px;">
+          <b>${label}</b><br>
+          📍 ${d["Latitude"]}, ${d["Longitude"]}<br>
+          <button onclick="gpsUpdate('${d["Location Type"]}','${d["Collateral Name"]}')">Update</button>
+          <button onclick="gpsOpenMap(${d["Latitude"]},${d["Longitude"]})">Map</button>
+        </div>
+      `;
+    });
+  }
+  document.getElementById("gpsContainer").innerHTML = html;
+}
+
+function gpsAdd() {
+  let type = prompt("Enter Type: Residence / Business / Collateral");
+  if (!type) return;
+  let name = "";
+  if (type === "Collateral") {
+    name = prompt("Enter Collateral Name");
+  }
+  navigator.geolocation.getCurrentPosition(pos => {
+    google.script.run.withSuccessHandler(loadGpsData)
+      .GPS_save({
+        customerName: GPS_NAME,
+        cifId: GPS_CIF,
+        type: type,
+        collateralName: name,
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude
+      });
+  }, () => alert("Please enable GPS"));
+}
+
+function gpsUpdate(type, name) {
+  navigator.geolocation.getCurrentPosition(pos => {
+    google.script.run.withSuccessHandler(loadGpsData)
+      .GPS_save({
+        customerName: GPS_NAME,
+        cifId: GPS_CIF,
+        type: type,
+        collateralName: name,
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude
+      });
+  });
+}
+
+function gpsOpenMap(lat, lng) {
+  window.open(`https://www.google.com/maps?q=${lat},${lng}`);
+}
+  
 </script>
 </body>
 </html>
