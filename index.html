@@ -1872,9 +1872,16 @@ function deleteGpsRecord(rowIndex) {
   callBackend('deleteGpsRecord', { rowIndex: rowIndex })
     .then(res => {
       toggleLoader(false);
+      if (res && res.error) {
+        alert('Delete failed: ' + res.error);
+        return;
+      }
       loadGpsRecords();
     })
-    .catch(() => { alert('Failed to delete'); toggleLoader(false); });
+    .catch(err => {
+      alert('Network error: ' + err.message);
+      toggleLoader(false);
+    });
 }
 
 function captureGpsLocation() {
@@ -1921,12 +1928,21 @@ function submitGpsForm() {
   callBackend(action, params)
     .then(res => {
       toggleLoader(false);
+      // Check if backend returned an error
+      if (res && res.error) {
+        alert('Save failed: ' + res.error);
+        return;
+      }
+      if (res && res.success === false) {
+        alert('Save failed: ' + (res.error || 'Unknown error'));
+        return;
+      }
       window.gpsEditRow = null;
       document.getElementById('gpsForm').classList.add('hidden');
-      loadGpsRecords();
+      loadGpsRecords();   // refresh list
     })
     .catch(err => {
-      alert('Save failed: ' + err);
+      alert('Network error: ' + err.message);
       toggleLoader(false);
     });
 }
