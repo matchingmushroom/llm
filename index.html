@@ -1188,7 +1188,27 @@
     <button class="close-btn" onclick="closeGpsModal()">Close</button>
   </div>
 </div>
+// GPS type options (used to rebuild dropdown dynamically)
+const GPS_TYPES = [
+  { value: 'Residence', text: '🏠 Residence' },
+  { value: 'Business',  text: '🏢 Business' },
+  { value: 'Collateral',text: '🚜 Collateral' }
+];
 
+function populateGpsDropdown(allowedTypes) {
+  const sel = document.getElementById('gpsLocType');
+  sel.innerHTML = '';
+  allowedTypes.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.value;
+    opt.textContent = t.text;
+    sel.appendChild(opt);
+  });
+  if (allowedTypes.length > 0) {
+    sel.value = allowedTypes[0].value;
+    gpsTypeChanged();   // update label visibility
+  }
+}
 <script>
   // ========== PWA SERVICE WORKER REGISTRATION ==========
   if ('serviceWorker' in navigator) {
@@ -1818,13 +1838,27 @@ function renderGpsChips() {
 }
 
 function showGpsAddForm() {
-  // Reset form
-  document.getElementById('gpsLocType').value = 'Residence';
-  gpsTypeChanged();
+  // Reset form fields
   document.getElementById('gpsLabel').value = '';
   document.getElementById('gpsCoordsDisplay').innerText = 'Awaiting GPS capture...';
   window.gpsCapturedLat = null;
   window.gpsCapturedLng = null;
+  window.gpsEditRow = null;   // clear any edit mode
+
+  // Determine which location types are still available
+  const hasResidence = gpsRecords.some(r => r.LocationType === 'Residence');
+  const hasBusiness  = gpsRecords.some(r => r.LocationType === 'Business');
+  
+  const allowed = [];
+  if (!hasResidence) allowed.push(GPS_TYPES[0]);   // Residence
+  if (!hasBusiness)  allowed.push(GPS_TYPES[1]);   // Business
+  allowed.push(GPS_TYPES[2]);                     // Collateral always allowed
+
+  // If both Residence and Business already exist, the user can only add Collateral.
+  // Still show the button and form – only the dropdown will be limited.
+  
+  populateGpsDropdown(allowed);
+  
   document.getElementById('gpsForm').classList.remove('hidden');
   document.getElementById('gpsUpdateList').classList.add('hidden');
 }
