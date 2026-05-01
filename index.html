@@ -10,8 +10,7 @@
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
   <title>Behind Schedule | Overdue Report View System</title>
   <style>
-    /* Same styles as before – keep your existing styles */
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     :root {
       --primary: #1A3B5C; --primary-light: #2A5A8C; --accent-gold: #C9A227;
       --bg-light: #F4F7FC; --surface-white: #FFFFFF; --text-primary: #0A1929;
@@ -21,7 +20,7 @@
     body { font-family: 'Inter', sans-serif; background: var(--bg-light); margin: 0; padding-bottom: 84px; }
     .hidden { display: none !important; }
     .content { padding: 0 20px; max-width: 1280px; margin: 0 auto; }
-    header { background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); padding: 16px 24px; position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; }
+    header { background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); padding: 16px 24px; position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
     .app-title { font-weight: 700; background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .dashboard-icon { cursor: pointer; padding: 8px 16px; background: rgba(26,59,92,0.04); border-radius: 40px; display: flex; align-items: center; gap: 6px; }
     .customer-header { background: white; border-radius: var(--radius-lg); padding: 24px; margin-bottom: 20px; box-shadow: var(--shadow-sm); }
@@ -49,7 +48,7 @@
     th { background: #F8FAFD; font-weight: 700; }
     .search-input { width: 100%; padding: 16px 20px; border-radius: 60px; border: 1px solid var(--border-light); font-size: 16px; }
     .search-result-item { background: white; border-radius: var(--radius-lg); padding: 16px; margin-bottom: 12px; cursor: pointer; display: flex; justify-content: space-between; box-shadow: var(--shadow-sm); }
-    .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; border-top: 1px solid var(--border-light); padding: 8px 0; }
+    .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; border-top: 1px solid var(--border-light); padding: 8px 0; z-index: 20; }
     .nav-item { flex: 1; text-align: center; cursor: pointer; font-size: 12px; color: var(--text-muted); }
     .nav-item.active { color: var(--primary); font-weight: 600; }
     .filter-chip { background: #F0F4FA; padding: 8px 16px; border-radius: 40px; cursor: pointer; }
@@ -60,13 +59,21 @@
     .spinner { width: 40px; height: 40px; border: 3px solid #ddd; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .offline-banner { background: var(--danger); color: white; text-align: center; padding: 8px; font-size: 12px; }
-    .location-card { background: white; border-radius: 12px; padding: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
+    .location-card { background: white; border-radius: 12px; padding: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm); }
+    .loc-icon { font-size: 28px; }
+    .loc-info { flex: 1; }
+    .loc-name { font-weight: 600; }
+    .loc-coords { font-size: 11px; color: var(--text-muted); }
+    .loc-actions { display: flex; gap: 8px; }
+    .icon-btn { background: none; border: none; font-size: 20px; cursor: pointer; }
     .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
     .modal-box { background: white; border-radius: 24px; padding: 24px; width: 90%; max-width: 400px; }
     .form-group { margin-bottom: 16px; }
     .form-label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; }
     .form-input, .form-select { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--border-light); }
     .btn-primary { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 40px; cursor: pointer; width: 100%; }
+    .btn-secondary { background: #eee; border: none; padding: 12px; border-radius: 40px; cursor: pointer; width: 100%; }
+    .flex-buttons { display: flex; gap: 10px; margin-top: 16px; }
     @media (max-width: 640px) { .grid-summary { grid-template-columns: repeat(2,1fr); } }
   </style>
 </head>
@@ -76,7 +83,7 @@
 
 <header>
   <div class="app-title">🏦 Behind Schedule</div>
-  <div class="dashboard-icon" onclick="openDashboard()">📊 Dashboard</div>
+  <div class="dashboard-icon" onclick="navTo('dashboard')">📊 Dashboard</div>
 </header>
 
 <main>
@@ -112,8 +119,31 @@
     </div>
   </div>
 
-  <!-- Group View, Insights, Dashboard, GPS – same as before, omitted for brevity but included in full code -->
-  <!-- I'll include them in the final code block -->
+  <!-- Group View -->
+  <div id="view-group" class="view hidden">
+    <div class="content" id="group-content" style="padding-top:20px;"></div>
+  </div>
+
+  <!-- Insights View -->
+  <div id="view-insights" class="view hidden">
+    <div class="content" id="insights-content" style="padding-top:20px;"></div>
+  </div>
+
+  <!-- Dashboard View -->
+  <div id="view-dashboard" class="view hidden">
+    <div class="content" id="dashboard-content" style="padding-top:20px;"></div>
+  </div>
+
+  <!-- GPS View -->
+  <div id="view-gps" class="view hidden">
+    <div class="content" style="padding-top:20px;">
+      <div class="customer-header" style="margin-bottom:16px;">
+        <div><strong id="gpsCustName">Loading...</strong><br><span id="gpsCustCif"></span></div>
+      </div>
+      <div id="gpsLocationList"></div>
+      <button class="btn-primary" style="position:fixed; bottom:90px; right:20px; width:auto; border-radius:50%; padding:12px; font-size:24px;" onclick="showAddGPSDialog()">+</button>
+    </div>
+  </div>
 </main>
 
 <nav class="bottom-nav">
@@ -121,29 +151,30 @@
   <div class="nav-item" id="n-detail" onclick="navTo('detail')">📋 Summary</div>
   <div class="nav-item" id="n-group" onclick="navTo('group')">👥 Group</div>
   <div class="nav-item" id="n-insights" onclick="navTo('insights')">📈 Insights</div>
+  <div class="nav-item" id="n-gps" onclick="navTo('gps')">📍 GPS</div>
 </nav>
 
-<!-- Share, Reminder, GPS Modals (same as before) -->
-<div id="shareModal" class="modal hidden"><div class="modal-box"><div class="modal-title">Share Account</div><textarea id="sharePreview" rows="3" readonly></textarea><button class="btn-primary" onclick="copyAccountInfo()">Copy</button><button onclick="closeShareModal()">Close</button></div></div>
-<div id="reminderModal" class="modal hidden"><div class="modal-box"><div class="modal-title">Send Reminder</div><select id="remLang"><option value="EN">English</option><option value="NP">Nepali</option></select><textarea id="remPreview" rows="3" readonly></textarea><button class="btn-primary" onclick="sendReminder()">Send via WhatsApp</button><button onclick="closeReminder()">Close</button></div></div>
-<div id="gpsModal" class="modal hidden"><div class="modal-box"><div class="modal-title" id="gpsModalTitle">GPS Location</div><select id="gpsLocType"><option>Business</option><option>Residence</option><option>Collateral</option></select><input id="gpsCustomName" placeholder="Name (for collateral)"><button onclick="captureGPS()">Get Current Location</button><input id="gpsLat" placeholder="Lat"><input id="gpsLng" placeholder="Lng"><button class="btn-primary" onclick="saveGPS()">Save</button></div></div>
+<!-- Modals -->
+<div id="shareModal" class="modal hidden"><div class="modal-box"><div class="modal-title">Share Account</div><textarea id="sharePreview" rows="3" readonly></textarea><div class="flex-buttons"><button class="btn-primary" onclick="copyAccountInfo()">Copy</button><button class="btn-secondary" onclick="closeShareModal()">Close</button></div></div></div>
+<div id="reminderModal" class="modal hidden"><div class="modal-box"><div class="modal-title">Send Reminder</div><select id="remLang"><option value="EN">English</option><option value="NP">Nepali</option></select><textarea id="remPreview" rows="3" readonly></textarea><div class="flex-buttons"><button class="btn-primary" onclick="sendReminderViaWhatsApp()">WhatsApp</button><button class="btn-secondary" onclick="closeReminder()">Close</button></div></div></div>
+<div id="gpsModal" class="modal hidden"><div class="modal-box"><div class="modal-title" id="gpsModalTitle">Record Location</div><div class="form-group"><label class="form-label">Type</label><select id="gpsLocType" class="form-select"><option value="Business">Business</option><option value="Residence">Residence</option><option value="Collateral">Collateral</option></select></div><div id="gpsCustomNameGroup" class="form-group"><label class="form-label">Custom Name</label><input id="gpsCustomName" class="form-input" placeholder="e.g., Village Home"></div><div class="form-group"><label class="form-label">Coordinates</label><div style="display:flex; gap:8px;"><input id="gpsLat" class="form-input" placeholder="Latitude" readonly><input id="gpsLng" class="form-input" placeholder="Longitude" readonly></div><button class="btn-primary" style="margin-top:8px;" onclick="captureGPS()">📍 Get Current Location</button><span id="gpsStatus" style="font-size:12px;"></span></div><div class="flex-buttons"><button class="btn-secondary" onclick="closeGPSModal()">Cancel</button><button class="btn-primary" onclick="saveGPSLocation()">Save</button></div></div></div>
 
 <script>
-  // ---------- CONFIGURATION ----------
-  // CHANGE THIS to your Apps Script deployment URL
+  // ========== CONFIGURATION ==========
+  // Replace with your actual Apps Script deployment URL
   const API_BASE = 'https://script.google.com/macros/s/AKfycbx4Nl5MJm9UjkSskwRAfZmMnN6M5MTtabLuvb5_b48tvnov06LKfrGv_-KRCBjXaBDw/exec';
   
-  // Global state
   let customers = [];
   let currentCIF = null;
   let currentGroup = "";
   let currentCustomerData = {};
+  let gpsRecords = [];
+  let gpsSelectedRecord = null;
   
-  // Helper
   const fAmt = (n) => '₹ ' + (Math.abs(n) < 0.01 ? "0.00" : Number(n).toLocaleString('en-IN', {minimumFractionDigits:2}));
   const toggleLoader = (show) => document.getElementById('loader').classList.toggle('hidden', !show);
   
-  // API caller
+  // ========== API CALLER ==========
   async function callBackend(action, params = {}) {
     const url = new URL(API_BASE);
     url.searchParams.append('action', action);
@@ -153,61 +184,48 @@
         else url.searchParams.append(k, params[k]);
       }
     });
-    console.log(`Calling ${action} with`, params);
-    const response = await fetch(url.toString());
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
+    console.log(`Calling ${action}`, params);
+    const resp = await fetch(url.toString());
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
     if (data.error) throw new Error(data.error);
     return data;
   }
   
-  // ---------- CUSTOMER LIST ----------
+  // ========== CUSTOMER LIST & SEARCH ==========
   async function loadCustomerList() {
     toggleLoader(true);
     try {
       const data = await callBackend('customers');
       customers = data;
       localStorage.setItem('crm_customers', JSON.stringify(data));
-      console.log('Loaded', customers.length, 'customers');
       renderSearchResults(customers);
     } catch (err) {
-      console.error('Failed to load customers', err);
+      console.error(err);
       const cached = localStorage.getItem('crm_customers');
       if (cached) {
         customers = JSON.parse(cached);
         renderSearchResults(customers);
-        alert('Using cached customer list (offline mode)');
-      } else {
-        alert('Cannot load customer list. Check your network and Apps Script URL.');
-      }
+        alert('Using cached customer list (offline)');
+      } else alert('Failed to load customers. Check network and API_BASE.');
     }
     toggleLoader(false);
   }
   
   function renderSearchResults(list) {
     const container = document.getElementById('results');
-    if (!list.length) { container.innerHTML = '<div class="search-result-item">No customers found</div>'; return; }
-    container.innerHTML = list.map(c => `
-      <div class="search-result-item" data-cif="${c.id}">
-        <div><strong>${c.name}</strong><br><small>CIF: ${c.id}</small></div>
-        <span>➡️</span>
-      </div>
-    `).join('');
-    // Attach click handlers
+    if (!list.length) { container.innerHTML = '<div class="search-result-item">No customers</div>'; return; }
+    container.innerHTML = list.map(c => `<div class="search-result-item" data-cif="${c.id}"><div><strong>${c.name}</strong><br><small>CIF: ${c.id}</small></div><span>➡️</span></div>`).join('');
     document.querySelectorAll('.search-result-item').forEach(el => {
       el.addEventListener('click', () => {
-        const cif = el.getAttribute('data-cif');
-        console.log('Selected customer CIF:', cif);
-        currentCIF = cif;
+        currentCIF = el.getAttribute('data-cif');
         navTo('detail');
       });
     });
   }
   
-  // Search input handler
   function setupSearch() {
-    const inp = document.getElementById('searchInp');
-    inp.addEventListener('input', (e) => {
+    document.getElementById('searchInp').addEventListener('input', (e) => {
       const term = e.target.value.toLowerCase();
       if (!term) { renderSearchResults(customers); return; }
       const filtered = customers.filter(c => c.name.toLowerCase().includes(term) || c.id.includes(term));
@@ -215,10 +233,9 @@
     });
   }
   
-  // ---------- NAVIGATION ----------
+  // ========== NAVIGATION ==========
   function navTo(view) {
-    console.log('Navigating to', view, 'currentCIF:', currentCIF);
-    if (view !== 'search' && view !== 'dashboard' && !currentCIF) {
+    if (view !== 'search' && view !== 'dashboard' && !currentCIF && view !== 'gps') {
       alert('Please select a customer first');
       return;
     }
@@ -231,32 +248,26 @@
     if (view === 'group') loadGroupDetails();
     if (view === 'insights') loadInsights();
     if (view === 'dashboard') loadDashboard();
+    if (view === 'gps') loadGPSData();
   }
   
-  // ---------- CUSTOMER DETAILS ----------
+  // ========== CUSTOMER DETAILS ==========
   async function loadCustomerDetails() {
     if (!currentCIF) return;
     toggleLoader(true);
     try {
       let data = await callBackend('metrics', { cifId: currentCIF });
-      if (!data) throw new Error('No data returned');
       renderCustomerDetails(data);
       localStorage.setItem(`crm_metrics_${currentCIF}`, JSON.stringify(data));
     } catch (err) {
-      console.error('Metrics error', err);
       const cached = localStorage.getItem(`crm_metrics_${currentCIF}`);
-      if (cached) {
-        renderCustomerDetails(JSON.parse(cached));
-        alert('Showing cached customer data (offline)');
-      } else {
-        alert('Failed to load customer details: ' + err.message);
-      }
+      if (cached) renderCustomerDetails(JSON.parse(cached));
+      else alert('Failed to load customer details');
     }
     toggleLoader(false);
   }
   
   function renderCustomerDetails(m) {
-    console.log('Rendering details for', m.CUSTOMER_NAME);
     document.getElementById('det-name').innerText = m.CUSTOMER_NAME;
     document.getElementById('det-id').innerHTML = `🆔 CIF: ${m.CIF_ID}`;
     currentGroup = m.CUSTOMER_GROUP || "NO GROUP";
@@ -264,14 +275,11 @@
     if (currentGroup !== "NO GROUP") {
       groupElem.innerHTML = `👥 ${currentGroup}`;
       groupElem.style.display = 'inline-flex';
-    } else {
-      groupElem.style.display = 'none';
-    }
-    // Status badges
+    } else groupElem.style.display = 'none';
+    
     const statusHtml = `<div class="st-icon st-act-${m.CATEGORY_ACTUAL.toLowerCase()}">${m.CATEGORY_ACTUAL}</div><div class="st-icon st-prob-${m.CATEGORY_PROBABLE.toLowerCase()}">${m.CATEGORY_PROBABLE}</div>`;
     document.getElementById('det-status').innerHTML = statusHtml;
     
-    // Summary cards
     const summaryHtml = `
       <div class="stat-card"><div class="stat-header">💰 Net Overdue</div><div class="stat-value">${fAmt(m.TOTAL_OVERDUE_NET)}</div></div>
       <div class="stat-card"><div class="stat-header">📊 Total Overdue</div><div class="stat-value">${fAmt(m.TOT_OVD_AMT)}</div></div>
@@ -282,7 +290,6 @@
     `;
     document.getElementById('summary-cards').innerHTML = summaryHtml;
     
-    // Loan table
     let loanHtml = '<table><thead><tr><th>Scheme / Account</th><th>Outstanding</th><th>Rate</th><th>Net Overdue</th></tr></thead><tbody>';
     m.accounts.forEach(acc => {
       loanHtml += `<tr><td><strong>${acc.SCHEME}</strong><br><small>${acc.ACCOUNT_NO}</small></td><td>${fAmt(acc.OUTSTANDING_LOAN)}</td><td>${acc.FULL_RATE}%</td><td style="color:red">${fAmt(acc.NET_OVD)}</td></tr>`;
@@ -290,7 +297,6 @@
     loanHtml += '</tbody></table>';
     document.getElementById('loan-table').innerHTML = loanHtml;
     
-    // Contact info (extraDetails)
     callBackend('extraDetails', { cifId: currentCIF }).then(contact => {
       if (contact) {
         currentCustomerData = { name: m.CUSTOMER_NAME, account: contact.OP_ACCOUNT, primaryPhone: contact.Contact_No, secondaryPhone: contact.Additional_Contact_Number };
@@ -298,15 +304,13 @@
           <div class="stat-card"><div class="stat-header">📞 Primary</div><div>${contact.Contact_Person_Name || ''}<br>${contact.Contact_No || '-'}</div></div>
           <div class="stat-card"><div class="stat-header">📞 Secondary</div><div>${contact.Additional_Person || ''}<br>${contact.Additional_Contact_Number || '-'}</div></div>
         `;
-      } else {
-        document.getElementById('contact-grid').innerHTML = '<div class="stat-card">No contact info</div>';
       }
     }).catch(() => {});
   }
   
-  // ---------- GROUP (simplified) ----------
+  // ========== GROUP ==========
   async function loadGroupDetails() {
-    if (!currentGroup || currentGroup === "NO GROUP") { document.getElementById('group-content').innerHTML = '<div class="stat-card">No group information</div>'; return; }
+    if (!currentGroup || currentGroup === "NO GROUP") { document.getElementById('group-content').innerHTML = '<div class="stat-card">No group info</div>'; return; }
     toggleLoader(true);
     try {
       const data = await callBackend('group', { groupName: currentGroup });
@@ -317,18 +321,20 @@
     toggleLoader(false);
   }
   
-  // ---------- INSIGHTS (simplified) ----------
+  // ========== INSIGHTS ==========
   async function loadInsights() {
     toggleLoader(true);
-    const ovd = await callBackend('overdue', { cifId: currentCIF });
-    let html = '<table><thead><tr><th>Date</th><th>Total OVD</th></tr></thead><tbody>';
-    ovd.rows.forEach(r => { html += `<tr><td>${r.OVD_DATE}</td><td>${fAmt(r.TOT_OVD_AMT)}</td></tr>`; });
-    html += `<tr><td><strong>Total</strong></td><td><strong>${fAmt(ovd.total.TOT_OVD_AMT)}</strong></td></tr></tbody></table>`;
-    document.getElementById('insights-content').innerHTML = html;
+    try {
+      const ovd = await callBackend('overdue', { cifId: currentCIF });
+      let html = '<table><thead><tr><th>Date</th><th>Total OVD</th></tr></thead><tbody>';
+      ovd.rows.forEach(r => { html += `<tr><td>${r.OVD_DATE}</td><td>${fAmt(r.TOT_OVD_AMT)}</td></tr>`; });
+      html += `<tr><td><strong>Total</strong></td><td><strong>${fAmt(ovd.total.TOT_OVD_AMT)}</strong></td></tr></tbody></table>`;
+      document.getElementById('insights-content').innerHTML = html;
+    } catch(e) { document.getElementById('insights-content').innerHTML = '<div class="stat-card">Error loading insights</div>'; }
     toggleLoader(false);
   }
   
-  // ---------- DASHBOARD (simplified, fix customer click) ----------
+  // ========== DASHBOARD ==========
   let dashboardPage = 1;
   async function loadDashboard() {
     toggleLoader(true);
@@ -338,72 +344,170 @@
       data.customers.forEach((c, idx) => {
         html += `<tr class="dashboard-row" data-cif="${c.cifId}"><td>${(dashboardPage-1)*10+idx+1}</td><td style="color:var(--primary); cursor:pointer;">${c.name}</td><td>${fAmt(c.limit)}</td></tr>`;
       });
-      html += '</tbody></table><div class="pagination"><button onclick="dashboardPrev()">Prev</button><span>Page ${dashboardPage} of ${data.totalPages}</span><button onclick="dashboardNext()">Next</button></div>';
+      html += '</tbody></table><div class="pagination"><button onclick="dashboardPrev()">Prev</button><span>Page ' + dashboardPage + ' of ' + data.totalPages + '</span><button onclick="dashboardNext()">Next</button></div>';
       document.getElementById('dashboard-content').innerHTML = html;
-      // Attach click listeners to each customer row
       document.querySelectorAll('.dashboard-row').forEach(row => {
-        row.addEventListener('click', (e) => {
-          const cif = row.getAttribute('data-cif');
-          console.log('Dashboard clicked CIF:', cif);
-          if (cif) {
-            currentCIF = cif;
-            navTo('detail');
-          }
+        row.addEventListener('click', () => {
+          currentCIF = row.getAttribute('data-cif');
+          navTo('detail');
         });
       });
-    } catch(e) { alert('Dashboard error'); }
+    } catch(e) { document.getElementById('dashboard-content').innerHTML = '<div class="stat-card">Error loading dashboard</div>'; }
     toggleLoader(false);
   }
   function dashboardPrev() { if(dashboardPage>1) { dashboardPage--; loadDashboard(); } }
   function dashboardNext() { dashboardPage++; loadDashboard(); }
   
-  // ---------- GPS (stub – adjust as needed) ----------
-  function openGPS() { if(!currentCIF) { alert('Select a customer first'); return; } alert('GPS module – integrate with your existing gps.gs'); }
+  // ========== GPS MODULE ==========
+  async function loadGPSData() {
+    if (!currentCIF) { alert('No customer selected'); return; }
+    toggleLoader(true);
+    try {
+      const info = await callBackend('getCustomerInfo', { cifId: currentCIF });
+      document.getElementById('gpsCustName').innerText = info.name;
+      document.getElementById('gpsCustCif').innerText = `CIF: ${info.cifId}`;
+      const records = await callBackend('getGPSData', { cifId: currentCIF });
+      gpsRecords = records;
+      renderGPSList(records);
+    } catch(e) { alert('GPS data error: ' + e.message); }
+    toggleLoader(false);
+  }
   
-  // ---------- Share & Reminder (simplified) ----------
+  function renderGPSList(records) {
+    const container = document.getElementById('gpsLocationList');
+    if (!records.length) { container.innerHTML = '<div class="empty-state">No GPS locations</div>'; return; }
+    container.innerHTML = records.map((rec, idx) => {
+      let icon = rec.type === 'Residence' ? '🏠' : (rec.type === 'Collateral' ? '📍' : '🏢');
+      return `
+        <div class="location-card">
+          <div class="loc-icon">${icon}</div>
+          <div class="loc-info">
+            <div class="loc-name">${rec.customName || rec.type}</div>
+            <div class="loc-coords">${rec.lat.toFixed(5)}, ${rec.lng.toFixed(5)}</div>
+          </div>
+          <div class="loc-actions">
+            <button class="icon-btn" onclick="openMaps(${rec.lat},${rec.lng})">🗺️</button>
+            <button class="icon-btn" onclick="editGPSLocation(${idx})">✏️</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+  
+  function openMaps(lat, lng) { window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank'); }
+  
+  function showAddGPSDialog() {
+    gpsSelectedRecord = null;
+    document.getElementById('gpsModalTitle').innerText = 'Record New Location';
+    document.getElementById('gpsLocType').value = 'Business';
+    document.getElementById('gpsCustomName').value = '';
+    document.getElementById('gpsLat').value = '';
+    document.getElementById('gpsLng').value = '';
+    document.getElementById('gpsCustomNameGroup').style.display = 'block';
+    document.getElementById('gpsLocType').disabled = false;
+    document.getElementById('gpsModal').classList.remove('hidden');
+  }
+  
+  function editGPSLocation(idx) {
+    gpsSelectedRecord = gpsRecords[idx];
+    document.getElementById('gpsModalTitle').innerText = 'Update Location';
+    document.getElementById('gpsLocType').value = gpsSelectedRecord.type;
+    document.getElementById('gpsLocType').disabled = true;
+    document.getElementById('gpsCustomName').value = gpsSelectedRecord.customName || '';
+    document.getElementById('gpsLat').value = gpsSelectedRecord.lat;
+    document.getElementById('gpsLng').value = gpsSelectedRecord.lng;
+    document.getElementById('gpsCustomNameGroup').style.display = (gpsSelectedRecord.type === 'Business') ? 'none' : 'block';
+    document.getElementById('gpsModal').classList.remove('hidden');
+  }
+  
+  function closeGPSModal() {
+    document.getElementById('gpsModal').classList.add('hidden');
+    document.getElementById('gpsLocType').disabled = false;
+    gpsSelectedRecord = null;
+  }
+  
+  async function captureGPS() {
+    if (!navigator.geolocation) { alert('Geolocation not supported'); return; }
+    document.getElementById('gpsStatus').innerText = 'Acquiring...';
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        document.getElementById('gpsLat').value = pos.coords.latitude.toFixed(6);
+        document.getElementById('gpsLng').value = pos.coords.longitude.toFixed(6);
+        document.getElementById('gpsStatus').innerText = `Accuracy: ${pos.coords.accuracy.toFixed(1)}m`;
+      },
+      err => { document.getElementById('gpsStatus').innerText = 'Failed: ' + err.message; alert('GPS error'); },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+  
+  async function saveGPSLocation() {
+    const type = document.getElementById('gpsLocType').value;
+    const customName = document.getElementById('gpsCustomName').value.trim();
+    const lat = parseFloat(document.getElementById('gpsLat').value);
+    const lng = parseFloat(document.getElementById('gpsLng').value);
+    if (isNaN(lat) || isNaN(lng)) { alert('Capture GPS coordinates first'); return; }
+    if ((type === 'Residence' || type === 'Collateral') && !customName) { alert('Please provide a name for this location'); return; }
+    try {
+      if (gpsSelectedRecord) {
+        await callBackend('updateGPSRecord', {
+          cifId: currentCIF,
+          type: type,
+          oldName: gpsSelectedRecord.customName || '',
+          newName: customName,
+          lat: lat,
+          lng: lng
+        });
+      } else {
+        await callBackend('saveGPSRecord', {
+          cifId: currentCIF,
+          type: type,
+          name: customName,
+          lat: lat,
+          lng: lng
+        });
+      }
+      closeGPSModal();
+      await loadGPSData();
+    } catch(e) { alert('Save failed: ' + e.message); }
+  }
+  
+  // ========== SHARE & REMINDER ==========
   function openShareModal() { if(!currentCustomerData.name) { alert('Load customer first'); return; } document.getElementById('sharePreview').value = `Customer: ${currentCustomerData.name}\nAccount: ${currentCustomerData.account}`; document.getElementById('shareModal').classList.remove('hidden'); }
   function closeShareModal() { document.getElementById('shareModal').classList.add('hidden'); }
   function copyAccountInfo() { navigator.clipboard.writeText(document.getElementById('sharePreview').value); alert('Copied'); closeShareModal(); }
-  function openReminderPopup() { document.getElementById('reminderModal').classList.remove('hidden'); }
-  function closeReminder() { document.getElementById('reminderModal').classList.add('hidden'); }
-  function sendReminder() { alert('Reminder sent'); closeReminder(); }
   
-  // ---------- INIT ----------
+  function openReminderPopup() { document.getElementById('reminderModal').classList.remove('hidden'); updateReminderPreview(); }
+  function closeReminder() { document.getElementById('reminderModal').classList.add('hidden'); }
+  function updateReminderPreview() {
+    const lang = document.getElementById('remLang').value;
+    const isExpired = (currentCustomerData.renewal || '').toUpperCase() === 'EXPIRED';
+    const text = lang === 'NP' ? (isExpired ? 'कृपया बक्यौता र नवीकरण गर्नुहोस्' : 'कृपया भुक्तानी गर्नुहोस्') : (isExpired ? 'Please clear dues and renew your loan' : 'Your payment is overdue. Please settle.');
+    document.getElementById('remPreview').value = text;
+  }
+  function sendReminderViaWhatsApp() {
+    const phone = currentCustomerData.primaryPhone;
+    if (!phone) { alert('No phone number'); return; }
+    const text = encodeURIComponent(document.getElementById('remPreview').value);
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const fullPhone = cleanPhone.startsWith('977') ? cleanPhone : '977' + cleanPhone;
+    window.open(`https://wa.me/${fullPhone}?text=${text}`, '_blank');
+  }
+  
+  // ========== GPS ENTRY FROM DETAIL ==========
+  function openGPS() {
+    if (!currentCIF) { alert('Select a customer first'); return; }
+    navTo('gps');
+  }
+  
+  // ========== INIT ==========
   window.onload = async () => {
-    console.log('App starting');
     await loadCustomerList();
     setupSearch();
-    // Setup dashboard container if not exists
-    if (!document.getElementById('view-dashboard')) {
-      const dashboardDiv = document.createElement('div');
-      dashboardDiv.id = 'view-dashboard';
-      dashboardDiv.className = 'view hidden';
-      dashboardDiv.innerHTML = '<div class="content" id="dashboard-content"></div>';
-      document.querySelector('main').appendChild(dashboardDiv);
-    }
-    if (!document.getElementById('view-group')) {
-      const groupDiv = document.createElement('div');
-      groupDiv.id = 'view-group';
-      groupDiv.className = 'view hidden';
-      groupDiv.innerHTML = '<div class="content" id="group-content"></div>';
-      document.querySelector('main').appendChild(groupDiv);
-    }
-    if (!document.getElementById('view-insights')) {
-      const insightsDiv = document.createElement('div');
-      insightsDiv.id = 'view-insights';
-      insightsDiv.className = 'view hidden';
-      insightsDiv.innerHTML = '<div class="content" id="insights-content"></div>';
-      document.querySelector('main').appendChild(insightsDiv);
-    }
-    if (!document.getElementById('view-gps')) {
-      const gpsDiv = document.createElement('div');
-      gpsDiv.id = 'view-gps';
-      gpsDiv.className = 'view hidden';
-      gpsDiv.innerHTML = '<div class="content">GPS view – integrate your module</div>';
-      document.querySelector('main').appendChild(gpsDiv);
-    }
-    console.log('Ready');
+    // Ensure all views exist (they do)
+    console.log('App ready');
   };
+  
+  window.onoffline = () => document.getElementById('offlineBanner').classList.remove('hidden');
+  window.ononline = () => document.getElementById('offlineBanner').classList.add('hidden');
 </script>
 </body>
 </html>
