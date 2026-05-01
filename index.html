@@ -1018,17 +1018,45 @@
     <button class="close-btn" onclick="closeReminder()">Close</button>
   </div>
 </div>
-   <!-- ================= GPS POPUP ================= -->
+<!-- ================= GPS TRACKING POPUP ================= -->
 <div id="gpsPopup" class="modal" style="display:none;">
-  <div class="modal-content">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <h3 id="gpsTitle">GPS Locations</h3>
-      <div>
-        <button onclick="gpsAdd()">＋</button>
-        <button onclick="closeGpsPopup()">✕</button>
-      </div>
+  <div class="modal-content" style="max-width:500px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="margin:0;">📍 GPS Tracking</h3>
+      <button onclick="closeGpsPopup()" style="background:none; border:none; font-size:20px;">✕</button>
     </div>
-    <div id="gpsContainer"></div>
+
+    <!-- Chips container -->
+    <div id="gpsChipsContainer" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px;"></div>
+
+    <!-- Add button (visible when no data) -->
+    <div id="gpsAddBtnContainer" style="text-align:center; margin-bottom:20px;"></div>
+
+    <!-- Add / Update Form (hidden by default) -->
+    <div id="gpsForm" style="display:none; border-top:1px solid #ddd; padding-top:16px; margin-top:8px;">
+      <label>Location Type</label>
+      <select id="gpsType" style="width:100%; padding:8px; margin:8px 0;">
+        <option value="Residence">🏠 Residence</option>
+        <option value="Business">💼 Business</option>
+        <option value="Collateral">🏢 Collateral</option>
+      </select>
+
+      <div id="gpsCollateralGroup" style="display:none;">
+        <label>Collateral Name</label>
+        <input type="text" id="gpsCollateralName" placeholder="e.g., Land at Kathmandu" style="width:100%; padding:8px; margin:8px 0;">
+      </div>
+
+      <button id="gpsFetchLocationBtn" style="background:#1A3B5C; color:white; padding:8px 16px; border:none; border-radius:6px; margin-right:8px;">
+        📍 Get Current Location
+      </button>
+      <button id="gpsSaveBtn" style="background:#28a745; color:white; padding:8px 16px; border:none; border-radius:6px;">
+        💾 Save
+      </button>
+      <button id="gpsCancelFormBtn" style="background:#6c757d; color:white; padding:8px 16px; border:none; border-radius:6px;">
+        Cancel
+      </button>
+      <div id="gpsLocationStatus" style="margin-top:8px; font-size:14px; color:#666;"></div>
+    </div>
   </div>
 </div>
 
@@ -1596,89 +1624,182 @@
   // API_BASE is already defined as your Apps Script deployment URL
   window.location.href = API_BASE + '?page=gps&cifId=' + currentCIF;
 }
-// ================= GPS MODULE =================
-
+// ================= GPS TRACKING MODULE =================
 let GPS_CIF = "";
 let GPS_NAME = "";
+let gpsCurrentLat = null;
+let gpsCurrentLng = null;
 
+// Open popup (called from your GPS button)
 function openGpsPopup(cif, name) {
   GPS_CIF = cif;
   GPS_NAME = name;
-  document.getElementById("gpsTitle").innerText = name + " - GPS";
   document.getElementById("gpsPopup").style.display = "block";
   loadGpsData();
 }
 
 function closeGpsPopup() {
   document.getElementById("gpsPopup").style.display = "none";
+  resetForm();
 }
 
+function resetForm() {
+  document.getElementById("gpsForm").style.display = "none";
+  document.getElementById("gpsType").value = "Residence";
+  document.getElementById("gpsCollateralGroup").style.display = "none";
+  document.getElementById("gpsCollateralName").value = "";
+  document.getElementById("gpsLocationStatus").innerHTML = "";
+  gpsCurrentLat = null;
+  gpsCurrentLng = null;
+}
+
+// Load data from backend
 function loadGpsData() {
-  google.script.run.withSuccessHandler(renderGpsData)
-    .GPS_getData(GPS_CIF);
+  google.script.run.withSuccessHandler(renderGpsChips).GPS_getData(GPS_CIF);
 }
 
-function renderGpsData(data) {
-  let html = "";
+// Render chips
+function renderGpsChips(data) {
+  const container = document.getElementById("gpsChipsContainer");
+  const addBtnContainer = document.getElementById("gpsAddBtnContainer");
+
   if (!data || data.length === 0) {
-    html = "<p>No GPS saved</p>";
-  } else {
-    data.forEach(d => {
-      let label = d["Location Type"];
-      if (d["Location Type"] === "Collateral") {
-        label += " - " + d["Collateral Name"];
-      }
-      html += `
-        <div style="border:1px solid #ddd; padding:10px; margin-bottom:10px; border-radius:8px;">
-          <b>${label}</b><br>
-          📍 ${d["Latitude"]}, ${d["Longitude"]}<br>
-          <button onclick="gpsUpdate('${d["Location Type"]}','${d["Collateral Name"]}')">Update</button>
-          <button onclick="gpsOpenMap(${d["Latitude"]},${d["Longitude"]})">Map</button>
-        </div>
-      `;
-    });
+    container.innerHTML = '<p style="color:#888;">No GPS locations saved.</p>';
+    addBtnContainer.innerHTML = '<button onclick="showAddForm()" style="background:#1A3B5C; color:white; padding:8px 20px; border:none; border-radius:30px; cursor:pointer;">➕ Add Location</button>';
+    return;
   }
-  document.getElementById("gpsContainer").innerHTML = html;
-}
 
-function gpsAdd() {
-  let type = prompt("Enter Type: Residence / Business / Collateral");
-  if (!type) return;
-  let name = "";
-  if (type === "Collateral") {
-    name = prompt("Enter Collateral Name");
-  }
-  navigator.geolocation.getCurrentPosition(pos => {
-    google.script.run.withSuccessHandler(loadGpsData)
-      .GPS_save({
-        customerName: GPS_NAME,
-        cifId: GPS_CIF,
-        type: type,
-        collateralName: name,
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude
-      });
-  }, () => alert("Please enable GPS"));
-}
+  // Show chips
+  let chipsHtml = "";
+  data.forEach(loc => {
+    let type = loc["Location Type"];
+    let collateral = loc["Collateral Name"] || "";
+    let lat = loc["Latitude"];
+    let lng = loc["Longitude"];
 
-function gpsUpdate(type, name) {
-  navigator.geolocation.getCurrentPosition(pos => {
-    google.script.run.withSuccessHandler(loadGpsData)
-      .GPS_save({
-        customerName: GPS_NAME,
-        cifId: GPS_CIF,
-        type: type,
-        collateralName: name,
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude
-      });
+    let icon = "";
+    let label = "";
+    if (type === "Residence") {
+      icon = "🏠";
+      label = "Home";
+    } else if (type === "Business") {
+      icon = "💼";
+      label = "Business";
+    } else if (type === "Collateral") {
+      icon = "🏢";
+      label = `Collateral: ${collateral}`;
+    }
+
+    chipsHtml += `
+      <div style="display:inline-flex; align-items:center; background:#f0f2f5; border-radius:30px; padding:6px 12px; gap:8px;">
+        <span style="font-size:18px;">${icon}</span>
+        <span style="font-weight:500;">${label}</span>
+        <button onclick="openMap(${lat},${lng})" style="background:none; border:none; cursor:pointer; font-size:16px;">🗺️</button>
+        <button onclick="updateExistingLocation('${type}','${collateral}')" style="background:none; border:none; cursor:pointer; font-size:14px; color:#1A3B5C;">✏️</button>
+      </div>
+    `;
   });
+  container.innerHTML = chipsHtml;
+  addBtnContainer.innerHTML = '<button onclick="showAddForm()" style="background:#1A3B5C; color:white; padding:8px 20px; border:none; border-radius:30px; cursor:pointer;">➕ Add Location</button>';
 }
 
-function gpsOpenMap(lat, lng) {
-  window.open(`https://www.google.com/maps?q=${lat},${lng}`);
+// Show the add form
+function showAddForm() {
+  resetForm();
+  document.getElementById("gpsForm").style.display = "block";
 }
-  
+
+// Update existing location (refetch GPS and save)
+function updateExistingLocation(type, collateralName) {
+  document.getElementById("gpsType").value = type;
+  if (type === "Collateral") {
+    document.getElementById("gpsCollateralGroup").style.display = "block";
+    document.getElementById("gpsCollateralName").value = collateralName;
+  } else {
+    document.getElementById("gpsCollateralGroup").style.display = "none";
+  }
+  document.getElementById("gpsForm").style.display = "block";
+  // scroll to form
+  document.getElementById("gpsForm").scrollIntoView({ behavior: "smooth" });
+}
+
+// Fetch current location
+function fetchCurrentLocation() {
+  const statusDiv = document.getElementById("gpsLocationStatus");
+  statusDiv.innerHTML = "📍 Fetching location...";
+  if (!navigator.geolocation) {
+    statusDiv.innerHTML = "❌ Geolocation not supported by your browser.";
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      gpsCurrentLat = position.coords.latitude;
+      gpsCurrentLng = position.coords.longitude;
+      statusDiv.innerHTML = `✅ Got coordinates: ${gpsCurrentLat.toFixed(6)}, ${gpsCurrentLng.toFixed(6)}`;
+    },
+    (error) => {
+      statusDiv.innerHTML = `❌ Error: ${error.message}`;
+    }
+  );
+}
+
+// Save data to backend
+function saveGpsLocation() {
+  const type = document.getElementById("gpsType").value;
+  let collateralName = "";
+  if (type === "Collateral") {
+    collateralName = document.getElementById("gpsCollateralName").value.trim();
+    if (!collateralName) {
+      alert("Please enter Collateral Name.");
+      return;
+    }
+  }
+
+  if (gpsCurrentLat === null || gpsCurrentLng === null) {
+    alert("Please fetch your current location first (click 'Get Current Location').");
+    return;
+  }
+
+  const payload = {
+    customerName: GPS_NAME,
+    cifId: GPS_CIF,
+    type: type,
+    collateralName: collateralName,
+    lat: gpsCurrentLat,
+    lng: gpsCurrentLng
+  };
+
+  google.script.run.withSuccessHandler(() => {
+    alert("GPS location saved!");
+    resetForm();
+    loadGpsData();  // refresh chips
+  }).GPS_save(payload);
+}
+
+// Open Google Maps
+function openMap(lat, lng) {
+  window.open(`https://www.google.com/maps?q=${lat},${lng}`, "_blank");
+}
+
+// Wire up form buttons (call this once on page load)
+function initGpsForm() {
+  document.getElementById("gpsFetchLocationBtn").onclick = fetchCurrentLocation;
+  document.getElementById("gpsSaveBtn").onclick = saveGpsLocation;
+  document.getElementById("gpsCancelFormBtn").onclick = () => {
+    resetForm();
+    document.getElementById("gpsForm").style.display = "none";
+  };
+  document.getElementById("gpsType").onchange = function() {
+    const collateralGroup = document.getElementById("gpsCollateralGroup");
+    collateralGroup.style.display = this.value === "Collateral" ? "block" : "none";
+  };
+}
+// Ensure init runs after DOM ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initGpsForm);
+} else {
+  initGpsForm();
+}
 </script>
 </body>
 </html>
